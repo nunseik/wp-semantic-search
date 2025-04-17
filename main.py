@@ -6,7 +6,7 @@ r = requests.get('https://www2.itanhaem.sp.gov.br/wp-json/wp/v2/posts', timeout=
 if r.status_code != requests.codes.ok:
     raise Exception("Servidor indisponivel, tente novamente.")
 
-# print(r.json()[0].keys())
+print(r.json()[0].keys())
 
 # with open('news.csv', newline='') as csvfile:
 #     reader = csv.DictReader(csvfile)
