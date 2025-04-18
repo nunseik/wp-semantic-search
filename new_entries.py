@@ -26,6 +26,8 @@ def find_new_entries(raw_data):
 
     return raw_data.json()[:count]
 
+#get_new_entries_dict is going to be used to add new entries to a vectorized database without worrying about the CSV file
+
 def get_new_entries_dict(new_entries, fieldnames):
     new_entries_lst = []
     for entry in new_entries:
