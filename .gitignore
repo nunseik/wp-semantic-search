@@ -6,3 +6,5 @@ files/
 # ignore ALL .csv .txt files
 *.csv
 *.txt
+*.faiss
+*.jsonl

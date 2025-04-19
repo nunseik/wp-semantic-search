@@ -2,7 +2,7 @@ from raw_data import get_url_data
 from new_entries import find_new_entries, get_new_entries_dict
 from csv_creator import csv_creator
 
-fieldnames = ('id', 'modified', 'slug', 'content')
+fieldnames = ('id', 'modified', 'title', 'slug', 'content')
 url="https://www2.itanhaem.sp.gov.br/wp-json/wp/v2/posts?per_page=20&page=1"
 
 def main():
