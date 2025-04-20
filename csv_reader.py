@@ -26,3 +26,13 @@ def get_csv_content():
                     row['content'] = strip_html(row['content'])
                     list_dict.append(row)
     return list_dict
+
+def get_new_entries_content(new_entries):
+    list_dict = []
+    if not new_entries:
+         return
+    for row in new_entries:
+        row['content'] = strip_html(row['content'])
+        list_dict.append(row)
+
+    return list_dict

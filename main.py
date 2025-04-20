@@ -14,9 +14,9 @@ def main():
     csv_creator(raw_data, new_entries, fieldnames)
 
     # get new entries filtered by fieldnames and return a list of dictionaries
-    new_entries_lst = get_new_entries_dict(new_entries, fieldnames)
-    for dict in new_entries_lst:
-        print(dict) #printing new entries in dict format
+    # new_entries_lst = get_new_entries_dict(new_entries, fieldnames)
+    # for dict in new_entries_lst:
+    #     print(dict) #printing new entries in dict format
 
 if __name__ == '__main__':
     main()
