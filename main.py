@@ -1,6 +1,7 @@
 from raw_data import get_url_data
 from new_entries import find_new_entries, get_new_entries_dict
 from csv_creator import csv_creator
+from database_creator import save_clean_contents, save_metadata_dicts, querying_index
 
 fieldnames = ('id', 'modified', 'title', 'slug', 'content')
 url="https://www2.itanhaem.sp.gov.br/wp-json/wp/v2/posts?per_page=20&page=1"
@@ -17,6 +18,13 @@ def main():
     # new_entries_lst = get_new_entries_dict(new_entries, fieldnames)
     # for dict in new_entries_lst:
     #     print(dict) #printing new entries in dict format
+
+    save_metadata_dicts(new_entries)
+    save_clean_contents(new_entries)
+    query_sentence = input("Qual a palavra-chave que voce quer buscar? ")
+    answers = querying_index(query_sentence, new_entries)
+    for a in range(len(answers)):
+        print(f"{a + 1}:{answers[a]["content"]}\n\n")
 
 if __name__ == '__main__':
     main()

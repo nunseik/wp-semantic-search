@@ -11,7 +11,7 @@ def find_new_entries(raw_data):
             for row in reader:
                 last_id = int(row['id'])
     else:
-        return []
+        return None
 
     count = 0
     list_ids = []

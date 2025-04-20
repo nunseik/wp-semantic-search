@@ -16,7 +16,8 @@ def get_new_contents(new_entries=None):
 
 def save_clean_contents(new_entries=None):
     if os.path.exists("files/news_content.jsonl"):
-
+        if not new_entries:
+            return
         new_clean_contents = get_new_contents(new_entries)
 
         with open("files/news_content.jsonl", "a", encoding="utf-8") as f:
@@ -115,12 +116,16 @@ def querying_index(query_sentence, new_entries=None):
     print(f"Query: {query_sentence}")
 
     print("Most similar sentences:")
-    save_metadata_dicts()
+    
     metadata_dicts = get_metadata_dicts()
     clean_contents = get_clean_contents()
-    for i, idx in enumerate(indices[0]):
-        print(f"{i + 1}: {clean_contents[idx]} (Distance: {distances[0][i]}) meta: {metadata_dicts[idx]}")
 
-save_clean_contents()
-query_sentence = input("Qual a palavra-chave que voce quer buscar? ")
-querying_index(query_sentence=query_sentence)
+    return [
+    {
+        "content": clean_contents[idx],
+        "metadata": metadata_dicts[idx],
+        "distance": distances[0][i]
+    }
+    for i, idx in enumerate(indices[0])
+]
+
