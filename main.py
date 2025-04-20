@@ -4,7 +4,7 @@ from csv_creator import csv_creator
 from database_creator import save_clean_contents, save_metadata_dicts, querying_index
 
 fieldnames = ('id', 'modified', 'title', 'slug', 'content')
-url="https://www2.itanhaem.sp.gov.br/wp-json/wp/v2/posts?per_page=20&page=1"
+url="https://www2.itanhaem.sp.gov.br/wp-json/wp/v2/posts?per_page=100&page=1"
 
 def main():
     # get raw data from url (list of dicts)
@@ -24,6 +24,8 @@ def main():
     query_sentence = input("Qual a palavra-chave que voce quer buscar? ")
     answers = querying_index(query_sentence, new_entries)
     for a in range(len(answers)):
+        print(f"{a + 1}:{answers[a]["distance"]}\n")
+        print(f"{a + 1}:{answers[a]["metadata"]["title"]}\n")
         print(f"{a + 1}:{answers[a]["content"]}\n\n")
 
 if __name__ == '__main__':
