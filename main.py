@@ -2,8 +2,10 @@ from raw_data import get_url_data
 from new_entries import find_new_entries
 from csv_creator import csv_creator
 from database_creator import save_clean_contents, save_metadata_dicts, querying_index
-from llm_agent import run_llama3, extract_keywords
+from llm_agent import run_llama3, extract_keywords, run_openai_chat
+import os
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 fieldnames = ('id', 'modified', 'title', 'slug', 'content')
 url="https://www2.itanhaem.sp.gov.br/wp-json/wp/v2/posts?per_page=100&page=1"
 
@@ -28,11 +30,13 @@ def main():
             print("👋 Até logo!")
             break
 
-        query_sentence = extract_keywords(user_input)
+        # query_sentence = extract_keywords(user_input)
 
-        answers = querying_index(query_sentence, new_entries)
+        answers = querying_index(user_input, new_entries)
 
-        response = run_llama3(answers, user_input)
+        # response = run_llama3(answers, user_input)
+        response = run_openai_chat(answers, user_input)
+
         print(f"\n🤖 Assistente:\n{response}\n")
 
 if __name__ == '__main__':

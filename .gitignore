@@ -1,7 +1,7 @@
 wp-search-venv/
 __pycache__/
 files/
-
+api_key.py
 
 # ignore ALL .csv .txt files
 *.csv

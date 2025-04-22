@@ -6,7 +6,6 @@ import os
 
 model = SentenceTransformer('all-MiniLM-L6-v2')  # Or another model
 
-
 def get_new_contents(new_entries=None):
     if not new_entries:
         return None
@@ -114,9 +113,7 @@ def querying_index(query_sentence, new_entries=None):
 
     # Display the results
     print(f"Query: {query_sentence}")
-
-    print("Most similar sentences:")
-    
+        
     metadata_dicts = get_metadata_dicts()
     clean_contents = get_clean_contents()
 
@@ -128,4 +125,3 @@ def querying_index(query_sentence, new_entries=None):
     }
     for i, idx in enumerate(indices[0])
 ]
-
