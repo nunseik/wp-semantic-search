@@ -9,7 +9,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 fieldnames = ('id', 'modified', 'title', 'slug', 'content')
 url="https://www2.itanhaem.sp.gov.br/wp-json/wp/v2/posts"
 articles_per_page = 100
-pages = 1
+pages = 10
 
 def main():
     # get raw data from url (list of dicts)
@@ -36,8 +36,8 @@ def main():
 
         answers = querying_index(user_input, new_entries)
 
-        # response = run_llama3(answers, user_input)
-        response = run_openai_chat(answers, user_input)
+        response = run_llama3(answers, user_input)
+        # response = run_openai_chat(answers, user_input)
 
         print(f"\n🤖 Assistente:\n{response}\n")
 
