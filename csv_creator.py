@@ -3,7 +3,7 @@ import csv
 
 def create_last_id_file(raw_data):
     with open('files/last_id.txt', 'w') as txtfile:
-            txtfile.write(str(raw_data.json()[0]['id']))
+            txtfile.write(str(raw_data[0]['id']))
 
 def csv_creator(raw_data, new_entries, fieldnames):
     if os.path.exists("files/news.csv"):
@@ -16,6 +16,6 @@ def csv_creator(raw_data, new_entries, fieldnames):
         with open('files/news.csv', 'w', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames, extrasaction='ignore')
             writer.writeheader()
-            writer.writerows(raw_data.json()[::-1])
+            writer.writerows(raw_data[::-1])
         
     create_last_id_file(raw_data)

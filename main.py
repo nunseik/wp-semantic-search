@@ -7,11 +7,13 @@ import os
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 fieldnames = ('id', 'modified', 'title', 'slug', 'content')
-url="https://www2.itanhaem.sp.gov.br/wp-json/wp/v2/posts?per_page=100&page=1"
+url="https://www2.itanhaem.sp.gov.br/wp-json/wp/v2/posts"
+articles_per_page = 100
+pages = 1
 
 def main():
     # get raw data from url (list of dicts)
-    raw_data = get_url_data(url=url)
+    raw_data = get_url_data(url, articles_per_page, pages)
     # find new entries if news.csv already exist
     new_entries = find_new_entries(raw_data)
     # create a csv file/ update a csv with new entries
