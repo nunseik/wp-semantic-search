@@ -1,15 +1,21 @@
 from raw_data import get_url_data
 from new_entries import find_new_entries
 from csv_creator import csv_creator
-from database_creator import save_clean_contents, save_metadata_dicts, querying_index
+from database_creator import save_clean_field, save_metadata, querying_index
 from llm_agent import run_llama3, extract_keywords, run_openai_chat
 import os
 
+#disabling a harmless warning from huggingface/tokenizers
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+#set what fieldnames we get from the url & other settings to get raw data
 fieldnames = ('id', 'modified', 'title', 'slug', 'content')
 url="https://www2.itanhaem.sp.gov.br/wp-json/wp/v2/posts"
 articles_per_page = 100
-pages = 10
+pages = 1
+
+#set fields to be indexed
+field_to_index = "content"
 
 def main():
     # get raw data from url (list of dicts)
@@ -19,8 +25,8 @@ def main():
     # create a csv file/ update a csv with new entries
     csv_creator(raw_data, new_entries, fieldnames)
 
-    save_metadata_dicts(new_entries)
-    save_clean_contents(new_entries)
+    save_metadata(new_entries, field_to_index)
+    save_clean_field(new_entries, field_to_index)
 
     print("🤖 Assistente da Prefeitura de Itanhaém")
     print("Digite sua pergunta ou 'sair' para encerrar.\n")
@@ -34,7 +40,7 @@ def main():
 
         # query_sentence = extract_keywords(user_input)
 
-        answers = querying_index(user_input, new_entries)
+        answers = querying_index(user_input, new_entries, field_to_index)
 
         response = run_llama3(answers, user_input)
         # response = run_openai_chat(answers, user_input)
