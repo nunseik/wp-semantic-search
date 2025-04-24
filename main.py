@@ -11,7 +11,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 fieldnames = ('id', 'modified', 'excerpt', 'link', 'content') # check your url with /wp-json/wp/v2/posts to see what fieldnames you want
 url="https://www2.itanhaem.sp.gov.br/" #accepts any Wordpress website
 articles_per_page = 100 #DO NOT exceed 100 articles per page
-pages = 5
+pages = 1
 
 #set fields to be indexed
 field_to_index = "excerpt"
@@ -41,18 +41,16 @@ def main():
         # querying index returns the top 3 articles in the faiss database
         answers = querying_index(query_sentence=user_input, new_entries=new_entries, field_to_index=field_to_index)
 
-        response = run_llama3(answers, user_input)
-        # response = run_openai_chat(answers, user_input)
+        # response = run_llama3(answers, user_input)
+        response = run_openai_chat(answers, user_input)
 
         print(f"\n🤖 Assistente:\n{response}\n")
 
 if __name__ == '__main__':
     main()
 
-''' 
+'''
 ### TO DO LIST
 - Add the logic to keep history in conversation so users can request more info from it
-- Test more models at model = SentenceTransformer('all-MiniLM-L6-v2')
-- Test excerpt as field to index
 - Add a function/script to clean database and refresh
 '''

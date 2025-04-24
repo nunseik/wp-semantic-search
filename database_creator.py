@@ -92,7 +92,7 @@ def querying_index(query_sentence, new_entries=None, field_to_index=""):
     query_embedding = model.encode([query_sentence])
 
     # Perform the search
-    k = 3  # Number of nearest neighbors to retrieve
+    k = 5  # Number of nearest neighbors to retrieve
     distances, indices = index.search(query_embedding, k)
 
     # Display the results
@@ -107,3 +107,11 @@ def querying_index(query_sentence, new_entries=None, field_to_index=""):
     }
     for i, idx in enumerate(indices[0])
 ]
+
+def debug_check_alignment():
+    index = faiss.read_index("files/index.faiss")
+    metadata = get_metadata()
+    assert index.ntotal == len(metadata), "Mismatch between FAISS index and metadata lines!"
+    print("✅ FAISS and metadata are aligned.")
+
+# debug_check_alignment()

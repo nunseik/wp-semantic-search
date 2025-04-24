@@ -45,7 +45,7 @@ def extract_keywords(question):
     return " ".join(keywords)
 
 def run_openai_chat(answers, pergunta):
-    today_date = datetime.today().strftime('%Y-%m-%d')
+    today_date = datetime.today()
 
     dados = ""
     for a in range(len(answers)):
@@ -55,13 +55,13 @@ def run_openai_chat(answers, pergunta):
         dados += "\n"
 
     system_message = (
-        "Você é um assistente da prefeitura de Itanhaém. "
-        f"Hoje é dia {today_date}. Use apenas os artigos abaixo para responder perguntas dos cidadãos."
+        "Você é um assistente de marketing da prefeitura de Itanhaém. "
+        f"Use os artigos abaixo para gerar legendas para o Instagram. Ignore os eventos que já ocorreram.\nEstamos no ano de {today_date.year} no mês {today_date.month} e dia {today_date.day}. "
     )
 
     prompt = (
         f"{dados}\n"
-        f"Com base nos artigos acima, responda claramente à pergunta do usuário:\n{pergunta}"
+        f"Com base nos artigos acima e a pergunta do usuario abaixo, gere uma legenda para o Instagram:\n###{pergunta}###"
     )
 
     response = client.chat.completions.create(
@@ -70,7 +70,7 @@ def run_openai_chat(answers, pergunta):
             {"role": "system", "content": system_message},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.5
+        temperature=0.2
     )
 
     return response.choices[0].message.content.strip()
