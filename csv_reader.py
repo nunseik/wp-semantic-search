@@ -17,13 +17,13 @@ def strip_html(html):
     stripper.feed(html)
     return stripper.get_data()
 
-def get_csv_content(field_to_index):
+def get_csv_content(field_to_clean):
     list_dict = []
 
     with open('files/news.csv', 'r', newline='') as csvfile:
                 reader = csv.DictReader(csvfile)
                 for row in reader:
-                    row[field_to_index] = strip_html(row[field_to_index])
+                    row[field_to_clean] = strip_html(row[field_to_clean])
                     list_dict.append(row)
     return list_dict
 
