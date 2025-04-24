@@ -8,13 +8,13 @@ import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 #set what fieldnames we get from the url & other settings to get raw data
-fieldnames = ('id', 'modified', 'title', 'slug', 'content') # check your url with /wp-json/wp/v2/posts to see what fieldnames you want
+fieldnames = ('id', 'modified', 'excerpt', 'link', 'content') # check your url with /wp-json/wp/v2/posts to see what fieldnames you want
 url="https://www2.itanhaem.sp.gov.br/" #accepts any Wordpress website
 articles_per_page = 100 #DO NOT exceed 100 articles per page
-pages = 2
+pages = 5
 
 #set fields to be indexed
-field_to_index = "content"
+field_to_index = "excerpt"
 
 def main():
     # get raw data from url (list of dicts)

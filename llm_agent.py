@@ -9,7 +9,10 @@ def run_llama3(answers, pergunta):
     today_date = datetime.today().strftime('%Y-%m-%d')
     dados = ""
     for a in range(len(answers)):
-        dados += f"### Artigo {a+1}\n" + f"Distancia:{answers[a]['distance']}\n" + f"Titulo:{answers[a]['metadata']['title']}\n" + f"Slug: {answers[a]['metadata']['slug']}\n" f"Publicado em: {answers[a]['metadata']['modified']}\n"+ f"Conteudo:{answers[a]['metadata']['content']}\n\n"
+        dados += f"### Artigo {a+1}\n" + f"Proximidade com a busca: {answers[a]['distance']}\n"
+        for data in answers[a]['metadata']:
+            dados += f"{data}: {answers[a]['metadata'][data]}\n"
+        dados += "\n"
     prompt = (
         dados + f"Hoje é dia {today_date}"
         f"Com base nos artigos acima, responda à pergunta do usuário:\n{pergunta}\n"
@@ -46,14 +49,10 @@ def run_openai_chat(answers, pergunta):
 
     dados = ""
     for a in range(len(answers)):
-        dados += (
-            f"### Artigo {a+1}\n"
-            f"Distância: {answers[a]['distance']}\n"
-            f"Título: {answers[a]['metadata']['title']}\n"
-            f"Slug: {answers[a]['metadata']['slug']}\n"
-            f"Publicado em: {answers[a]['metadata']['modified']}\n"
-            f"Conteúdo:\n{answers[a]['metadata']['content']}\n\n"
-        )
+        dados += f"### Artigo {a+1}\n" + f"Proximidade com a busca: {answers[a]['distance']}\n"
+        for data in answers[a]['metadata']:
+            dados += f"{data}: {answers[a]['metadata'][data]}\n"
+        dados += "\n"
 
     system_message = (
         "Você é um assistente da prefeitura de Itanhaém. "
