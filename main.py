@@ -1,7 +1,6 @@
 from raw_data import get_url_data
 from new_entries import find_new_entries
-from csv_creator import csv_creator
-from database_creator import save_clean_field, save_metadata, querying_index
+from database_creator import save_metadata, querying_index
 from llm_agent import run_llama3, extract_keywords, run_openai_chat
 import os
 
@@ -12,7 +11,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 fieldnames = ('id', 'modified', 'title', 'slug', 'content') # check your url with /wp-json/wp/v2/posts to see what fieldnames you want
 url="https://www2.itanhaem.sp.gov.br/" #accepts any Wordpress website
 articles_per_page = 100 #DO NOT exceed 100 articles per page
-pages = 10 
+pages = 2
 
 #set fields to be indexed
 field_to_index = "content"
@@ -24,12 +23,8 @@ def main():
     # find new entries if news.csv already exist
     new_entries = find_new_entries(raw_data)
 
-    # create a csv file/ update a csv with new entries
-    csv_creator(raw_data, new_entries, fieldnames)
-
-    # save metadata csv and field_to_index csv
-    save_metadata(new_entries, field_to_index)
-    save_clean_field(new_entries, field_to_index)
+    # save metadata jsonl
+    save_metadata(raw_data, new_entries, field_to_index, fieldnames)
 
     print("🤖 Assistente da Prefeitura de Itanhaém")
     print("Digite sua pergunta ou 'sair' para encerrar.\n")
@@ -56,7 +51,6 @@ if __name__ == '__main__':
 
 ''' 
 ### TO DO LIST
-- get_clean_contents function should return a specified variable that we're returning from querying_index and not only the field_to_index.
 - Add the logic to keep history in conversation so users can request more info from it
 - Test more models at model = SentenceTransformer('all-MiniLM-L6-v2')
 - Test excerpt as field to index

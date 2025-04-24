@@ -1,5 +1,5 @@
 import os
-import csv
+from database_creator import get_metadata
 
 def find_new_entries(raw_data):
     last_id = None
@@ -8,11 +8,9 @@ def find_new_entries(raw_data):
         with open('files/last_id.txt', 'r') as txtfile:
             last_id = int(txtfile.read())
 
-    elif os.path.exists("files/news.csv"):
-        with open('files/news.csv', 'r') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                last_id = int(row['id'])
+    elif os.path.exists("files/news_meta.jsonl"):
+        metadata = get_metadata()
+        last_id = metadata[0]['id']
 
     # Exit early if we couldn't determine the last ID
     if last_id is None:
@@ -33,12 +31,3 @@ def find_new_entries(raw_data):
 
     print(f"Found {count} new entries")
     return raw_data[:count]
-
-#get_new_entries_dict is going to be used to add new entries to a vectorized database without worrying about the CSV file
-
-def get_new_entries_dict(new_entries, fieldnames):
-    new_entries_lst = []
-    for entry in new_entries:
-        new_entry_dict = {key: entry[key] for key in fieldnames}
-        new_entries_lst.append(new_entry_dict)
-    return new_entries_lst

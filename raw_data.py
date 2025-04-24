@@ -3,7 +3,7 @@ import time
 import os
 
 def get_url_data(base_url, articles_per_page=10, pages=1):
-    if os.path.exists("files/news.csv"):
+    if os.path.exists("files/news_meta.jsonl"):
         response = requests.get(base_url+"wp-json/wp/v2/posts", timeout=10)
 
         if response.status_code != requests.codes.ok:

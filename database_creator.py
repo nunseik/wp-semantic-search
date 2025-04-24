@@ -1,4 +1,4 @@
-from csv_reader import get_csv_content, get_new_entries_field
+from html_stripper import get_stripped_content
 import json
 from sentence_transformers import SentenceTransformer
 import faiss
@@ -6,61 +6,43 @@ import os
 
 model = SentenceTransformer('all-MiniLM-L6-v2')  # Or another model
 
+def get_entries_dict(new_entries, fieldnames):
+    return [{key: entry[key] for key in fieldnames} for entry in new_entries]
+
+def create_last_id_file(raw_data):
+    with open('files/last_id.txt', 'w') as txtfile:
+            txtfile.write(str(raw_data[0]['id']))
+
 def get_new_contents(new_entries=None, field_to_index=""):
     if not new_entries:
         return None
     
-    new_list_contents = get_new_entries_field(new_entries, field_to_index)
+    new_list_contents = get_stripped_content(new_entries, field_to_index)
     return [row[field_to_index] for row in new_list_contents]
 
-def save_clean_field(new_entries=None, field_to_index=""):
-    if os.path.exists("files/indexed_field.jsonl"):
-        if not new_entries:
-            return
-        new_clean_contents = get_new_contents(new_entries, field_to_index)
+def save_metadata(raw_data, new_entries=None, field_to_index="", fieldnames=None):
+    if fieldnames is None:
+        fieldnames = ["id", "modified", "title", "slug"]  # default fallback
 
-        with open("files/indexed_field.jsonl", "a", encoding="utf-8") as f:
-            for text in new_clean_contents:
-                f.write(text.strip() + "\n")
-
-    else:
-        list_contents = get_csv_content(field_to_index)
-
-        if list_contents == []:
-            return []
-        
-        clean_contents = [row[field_to_index] for row in list_contents]
-        
-        with open("files/indexed_field.jsonl", "w", encoding="utf-8") as f:
-            for text in clean_contents:
-                f.write(text.strip() + "\n")
-
-def get_clean_field():
-    with open("files/indexed_field.jsonl", "r", encoding="utf-8") as f:
-        return [line.strip() for line in f]
-
-
-def save_metadata(new_entries=None, field_to_index=""):
     if os.path.exists("files/news_meta.jsonl"):
         if not new_entries:
             return
-        new_list_contents = get_new_entries_field(new_entries, field_to_index)
-
-        new_metadata_dicts = [{'id':row['id'], 'modified':row['modified'],'title':row['title'], 'slug':row['slug']} for row in new_list_contents]
+        
+        new_list_contents = get_stripped_content(get_entries_dict(new_entries, fieldnames),field_to_index)
 
         with open("files/news_meta.jsonl", "a", encoding="utf-8") as outfile:
-            for row in new_metadata_dicts:
+            for row in new_list_contents:
                 json.dump(row, outfile, ensure_ascii=False)
                 outfile.write("\n")
     else:
-        list_contents = get_csv_content(field_to_index)
-        
-        metadata_dicts = [{'id':row['id'], 'modified':row['modified'],'title':row['title'], 'slug':row['slug']} for row in list_contents]
+        list_contents = get_stripped_content(get_entries_dict(raw_data, fieldnames), field_to_index)
 
         with open("files/news_meta.jsonl", "w", encoding="utf-8") as outfile:
-            for row in metadata_dicts:
+            for row in list_contents:
                 json.dump(row, outfile, ensure_ascii=False)
                 outfile.write("\n")
+    
+    create_last_id_file(raw_data)
 
 def get_metadata():
     metadata_dicts = []
@@ -82,7 +64,9 @@ def get_faiss_index(new_entries = None, field_to_index=""):
         index.add(embeddings)
         faiss.write_index(index, "files/index.faiss")
     else:
-        clean_contents = get_clean_field()
+        metadata_dicts = get_metadata()
+        clean_contents = [metadata[field_to_index] for metadata in metadata_dicts]
+        
         embeddings = model.encode(clean_contents, normalize_embeddings=True)
 
         # Dimensions of our embeddings
@@ -115,11 +99,9 @@ def querying_index(query_sentence, new_entries=None, field_to_index=""):
     print(f"Query: {query_sentence}")
         
     metadata_dicts = get_metadata()
-    clean_contents = get_clean_field()
 
     return [
     {
-        "content": clean_contents[idx],
         "metadata": metadata_dicts[idx],
         "distance": distances[0][i]
     }
