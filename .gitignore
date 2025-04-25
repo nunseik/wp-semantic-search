@@ -5,6 +5,5 @@ api_key.py
 
 # ignore ALL .csv .txt files
 *.csv
-*.txt
 *.faiss
 *.jsonl
