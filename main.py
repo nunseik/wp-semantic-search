@@ -3,6 +3,7 @@ from new_entries import find_new_entries
 from database_creator import save_metadata, querying_index
 from llm_agent import run_llama3, extract_keywords, run_openai_chat
 import os
+import argparse
 
 #disabling a harmless warning from huggingface/tokenizers
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -17,6 +18,29 @@ pages = 1
 field_to_index = "excerpt"
 
 def main():
+    parser = argparse.ArgumentParser(description="Run semantic assistant for WordPress sites")
+    parser.add_argument(
+        "--model",
+        choices=["ollama", "openai"],
+        default="ollama",
+        help="Choose which LLM backend to use: 'ollama' or 'openai' (default: ollama)"
+    )
+    parser.add_argument(
+        "--refresh",
+        action='store_true',
+        help="Refresh your databa with a new collection of articles"
+    )
+    args = parser.parse_args()
+
+    if args.refresh:
+        print("🧹 Refreshing the local database...")
+        for file in ["files/index.faiss", "files/last_id.txt", "files/news_meta.jsonl"]:
+            if os.path.exists(file):
+                os.remove(file)
+                print(f"✅ Deleted: {file}")
+            else:
+                print(f"⚠️ Skipped (not found): {file}")
+
     # get raw data from url (list of dicts)
     raw_data = get_url_data(url, articles_per_page, pages)
 
@@ -41,8 +65,10 @@ def main():
         # querying index returns the top 3 articles in the faiss database
         answers = querying_index(query_sentence=user_input, new_entries=new_entries, field_to_index=field_to_index)
 
-        # response = run_llama3(answers, user_input)
-        response = run_openai_chat(answers, user_input)
+        if args.model == "openai":
+            response = run_openai_chat(answers, user_input)
+        else:
+            response = run_llama3(answers, user_input)
 
         print(f"\n🤖 Assistente:\n{response}\n")
 
