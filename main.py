@@ -1,6 +1,6 @@
 from raw_data import get_url_data
 from new_entries import find_new_entries
-from database_creator import save_metadata, querying_index
+from database_creator import save_metadata, get_faiss_index, querying_index
 from llm_agent import run_llama3, extract_keywords, run_openai_chat
 import os
 import argparse
@@ -50,6 +50,9 @@ def main():
     # save metadata jsonl
     save_metadata(raw_data, new_entries, field_to_index, fieldnames)
 
+    # build or update the index once; new entries must not be re-added on every question
+    index = get_faiss_index(new_entries, field_to_index)
+
     print("🤖 Assistente da Prefeitura de Itanhaém")
     print("Digite sua pergunta ou 'sair' para encerrar.\n")
 
@@ -63,7 +66,7 @@ def main():
         # query_sentence = extract_keywords(user_input)
 
         # querying index returns the top 3 articles in the faiss database
-        answers = querying_index(query_sentence=user_input, new_entries=new_entries, field_to_index=field_to_index)
+        answers = querying_index(user_input, index)
 
         if args.model == "openai":
             response = run_openai_chat(answers, user_input)

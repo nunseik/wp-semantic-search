@@ -84,29 +84,26 @@ def get_faiss_index(new_entries = None, field_to_index=""):
         print(f"Total sentences indexed: {index.ntotal}")
     return index
 
-def querying_index(query_sentence, new_entries=None, field_to_index=""):
-    #get faiss index
-    index = get_faiss_index(new_entries, field_to_index)
+def querying_index(query_sentence, index, k=5):
+    # Queries must be normalized the same way as the indexed embeddings,
+    # otherwise L2 distances against the unit vectors in the index are skewed.
+    query_embedding = model.encode([query_sentence], normalize_embeddings=True)
 
-    # Define a query sentence
-    query_embedding = model.encode([query_sentence])
-
-    # Perform the search
-    k = 5  # Number of nearest neighbors to retrieve
+    k = min(k, index.ntotal)
     distances, indices = index.search(query_embedding, k)
 
-    # Display the results
     print(f"Query: {query_sentence}")
-        
+
     metadata_dicts = get_metadata()
 
     return [
-    {
-        "metadata": metadata_dicts[idx],
-        "distance": distances[0][i]
-    }
-    for i, idx in enumerate(indices[0])
-]
+        {
+            "metadata": metadata_dicts[idx],
+            "distance": float(distances[0][i]),
+        }
+        for i, idx in enumerate(indices[0])
+        if idx != -1
+    ]
 
 def debug_check_alignment():
     index = faiss.read_index("files/index.faiss")
