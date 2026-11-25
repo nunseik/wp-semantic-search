@@ -8,8 +8,10 @@ This is a lightweight semantic search assistant built for WordPress-based news w
 
 - Connects to any WordPress site exposing the REST API
 - Extracts and cleans HTML content from articles
-- Embeds article content with Sentence Transformers
-- Stores embeddings in FAISS for fast vector similarity search
+- Splits each article into chunks (paragraphs packed up to 120 words, long paragraphs split with overlap)
+- Embeds every chunk (with its article title) using Sentence Transformers
+- Stores chunk embeddings in FAISS and ranks articles by their best-matching chunk
+- Answers cite their sources as [n], and the matching article links are listed after each answer
 - Supports two LLM backends: **Ollama** (offline) and **OpenAI GPT-4o**
 - Incremental updates: adds only new articles to the database
 - Includes CLI flags for switching models and refreshing the index
@@ -68,6 +70,8 @@ python main.py
 - `--model ollama` → use LLaMA 3.2B via Ollama (default)
 - `--refresh` → rebuild your FAISS index and metadata from scratch
 
+> Upgrading from a version without chunking? Run once with `--refresh`: the old index stored one vector per article and can't be reused.
+
 Example:
 
 ```bash
@@ -86,10 +90,17 @@ openai_key = "sk-..."
 
 ---
 
+## ⚙️ Configuration
+
+`config.py` holds the data folder (`WP_SEARCH_DATA`, default `files`), the embedding model (`WP_SEARCH_MODEL`, default `all-MiniLM-L6-v2`) and the chunk size. Changing the model or chunk size needs a `--refresh`.
+
+---
+
 ## 🗂 File Structure
 
-- `files/news_meta.jsonl` – metadata for each article (ID, date, title, slug, and content)
-- `files/index.faiss` – FAISS index storing all article embeddings
+- `files/news_meta.jsonl` – one row per article (ID, date, title, link, and plain-text content)
+- `files/chunks.jsonl` – one row per chunk (article ID, chunk number, text); row *i* is vector *i* of the index
+- `files/index.faiss` – FAISS index of normalized chunk embeddings (inner product = cosine similarity)
 - `files/last_id.txt` – stores the last indexed article ID
 
 ---

@@ -1,114 +1,169 @@
-from html_stripper import get_stripped_content
 import json
-from sentence_transformers import SentenceTransformer
-import faiss
 import os
 
-model = SentenceTransformer('all-MiniLM-L6-v2')  # Or another model
+import faiss
+
+from chunking import chunk_text
+from config import CHUNKS_PATH, DATA_DIR, INDEX_PATH, LAST_ID_PATH, META_PATH, MODEL_NAME
+from html_stripper import get_stripped_content
+
+# WordPress fields that arrive as HTML and are stored as plain text
+TEXT_FIELDS = ("title", "excerpt", "content")
+
+_model = None
+
+
+def get_model():
+    # loaded on first use, so importing this module stays cheap
+    global _model
+    if _model is None:
+        from sentence_transformers import SentenceTransformer
+        _model = SentenceTransformer(MODEL_NAME)
+    return _model
+
+
+def embed_passages(texts):
+    return get_model().encode(texts, normalize_embeddings=True)
+
+
+def embed_query(query):
+    # normalized like the passages, so inner product == cosine similarity
+    return get_model().encode([query], normalize_embeddings=True)
+
+
+def read_jsonl(path):
+    with open(path, "r", encoding="utf-8") as infile:
+        return [json.loads(line) for line in infile if line.strip()]
+
+
+def write_jsonl(path, rows, mode="w"):
+    with open(path, mode, encoding="utf-8") as outfile:
+        for row in rows:
+            json.dump(row, outfile, ensure_ascii=False)
+            outfile.write("\n")
+
 
 def get_entries_dict(new_entries, fieldnames):
-    return [{key: entry[key] for key in fieldnames} for entry in new_entries]
+    return [{key: entry[key] for key in fieldnames if key in entry} for entry in new_entries]
+
 
 def create_last_id_file(raw_data):
-    with open('files/last_id.txt', 'w') as txtfile:
-            txtfile.write(str(raw_data[0]['id']))
+    with open(LAST_ID_PATH, "w") as txtfile:
+        txtfile.write(str(raw_data[0]["id"]))
 
-def get_new_contents(new_entries=None, field_to_index=""):
-    if not new_entries:
-        return None
-    
-    new_list_contents = get_stripped_content(new_entries, field_to_index)
-    return [row[field_to_index] for row in new_list_contents]
 
-def save_metadata(raw_data, new_entries=None, field_to_index="", fieldnames=None):
+def save_metadata(raw_data, new_entries=None, fieldnames=None):
+    """Store one plain-text row per article in news_meta.jsonl."""
     if fieldnames is None:
-        fieldnames = ["id", "modified", "title", "slug"]  # default fallback
+        fieldnames = ["id", "modified", "title", "link", "content"]
+    os.makedirs(DATA_DIR, exist_ok=True)
 
-    if os.path.exists("files/news_meta.jsonl"):
+    if os.path.exists(META_PATH):
         if not new_entries:
             return
-        
-        new_list_contents = get_stripped_content(get_entries_dict(new_entries, fieldnames),field_to_index)
-
-        with open("files/news_meta.jsonl", "a", encoding="utf-8") as outfile:
-            for row in new_list_contents:
-                json.dump(row, outfile, ensure_ascii=False)
-                outfile.write("\n")
+        rows = get_stripped_content(get_entries_dict(new_entries, fieldnames), TEXT_FIELDS)
+        write_jsonl(META_PATH, rows, mode="a")
     else:
-        list_contents = get_stripped_content(get_entries_dict(raw_data, fieldnames), field_to_index)
+        rows = get_stripped_content(get_entries_dict(raw_data, fieldnames), TEXT_FIELDS)
+        write_jsonl(META_PATH, rows)
 
-        with open("files/news_meta.jsonl", "w", encoding="utf-8") as outfile:
-            for row in list_contents:
-                json.dump(row, outfile, ensure_ascii=False)
-                outfile.write("\n")
-    
     create_last_id_file(raw_data)
 
+
 def get_metadata():
-    metadata_dicts = []
+    return read_jsonl(META_PATH)
 
-    with open("files/news_meta.jsonl", "r", encoding="utf-8") as infile:
-        for line in infile:
-            metadata_dicts.append(json.loads(line))
 
-    return metadata_dicts
+def get_chunks():
+    return read_jsonl(CHUNKS_PATH)
 
-def get_faiss_index(new_entries = None, field_to_index=""):
-    new_contents = get_new_contents(new_entries, field_to_index)
-    if os.path.exists("files/index.faiss") and not new_contents:
-        index = faiss.read_index("files/index.faiss")
-    elif os.path.exists("files/index.faiss") and new_contents:
-        embeddings = model.encode(new_contents, normalize_embeddings=True)
-        # Adding the embeddings to the index
-        index = faiss.read_index("files/index.faiss")
-        index.add(embeddings)
-        faiss.write_index(index, "files/index.faiss")
-    else:
-        metadata_dicts = get_metadata()
-        clean_contents = [metadata[field_to_index] for metadata in metadata_dicts]
-        
-        embeddings = model.encode(clean_contents, normalize_embeddings=True)
 
-        # Dimensions of our embeddings
-        d = embeddings.shape[1]
+def build_chunks(articles, field_to_index):
+    """One row per chunk; row i of chunks.jsonl is vector i of the index."""
+    rows = []
+    for article in articles:
+        for n, text in enumerate(chunk_text(article.get(field_to_index) or "")):
+            rows.append({"id": article["id"], "chunk": n, "title": article.get("title", ""), "text": text})
+    return rows
 
-        # Creating an index for our dense vectors
-        index = faiss.IndexFlatL2(d)
 
-        # Adding the embeddings to the index
-        index.add(embeddings)
+def passage_texts(rows):
+    # the title gives every chunk the article's topic, even chunks deep in the text
+    return [f"{row['title']}\n{row['text']}" if row["title"] else row["text"] for row in rows]
 
-        # write index to file
-        faiss.write_index(index, "files/index.faiss")
 
-        print(f"Total sentences indexed: {index.ntotal}")
+def get_faiss_index(new_entries=None, field_to_index="content"):
+    """Load the index, adding chunks for new_entries; build it from news_meta.jsonl if missing."""
+    if os.path.exists(INDEX_PATH):
+        if not os.path.exists(CHUNKS_PATH):
+            raise SystemExit(
+                "files/index.faiss was built by an older version (one vector per article). "
+                "Run with --refresh to rebuild it with chunks."
+            )
+        index = faiss.read_index(INDEX_PATH)
+        n_chunks = len(get_chunks())
+        if index.ntotal != n_chunks:
+            raise SystemExit(
+                f"Index has {index.ntotal} vectors but chunks.jsonl has {n_chunks} rows. Run with --refresh."
+            )
+
+        if new_entries:
+            new_ids = {entry["id"] for entry in new_entries}
+            rows = build_chunks([a for a in get_metadata() if a["id"] in new_ids], field_to_index)
+            if rows:
+                index.add(embed_passages(passage_texts(rows)))
+                write_jsonl(CHUNKS_PATH, rows, mode="a")
+                faiss.write_index(index, INDEX_PATH)
+                print(f"Added {len(rows)} chunks from {len(new_ids)} new articles")
+        return index
+
+    articles = get_metadata()
+    rows = build_chunks(articles, field_to_index)
+    if not rows:
+        raise SystemExit(f"No text found in the '{field_to_index}' field of {len(articles)} articles.")
+
+    embeddings = embed_passages(passage_texts(rows))
+    index = faiss.IndexFlatIP(embeddings.shape[1])
+    index.add(embeddings)
+
+    write_jsonl(CHUNKS_PATH, rows)
+    faiss.write_index(index, INDEX_PATH)
+    print(f"Indexed {len(rows)} chunks from {len(articles)} articles")
     return index
 
-def querying_index(query_sentence, index, k=5):
-    # Queries must be normalized the same way as the indexed embeddings,
-    # otherwise L2 distances against the unit vectors in the index are skewed.
-    query_embedding = model.encode([query_sentence], normalize_embeddings=True)
 
-    k = min(k, index.ntotal)
-    distances, indices = index.search(query_embedding, k)
+def querying_index(query_sentence, index, k=5, passages_per_article=2):
+    """Return the k best articles for the query, each with its best-matching passages.
 
-    print(f"Query: {query_sentence}")
+    Searches over chunks, then groups hits by article: an article ranks by its best chunk.
+    """
+    chunks = get_chunks()
+    articles = {article["id"]: article for article in get_metadata()}
 
-    metadata_dicts = get_metadata()
+    n_hits = min(index.ntotal, max(10 * k, 50))
+    scores, ids = index.search(embed_query(query_sentence), n_hits)
 
-    return [
-        {
-            "metadata": metadata_dicts[idx],
-            "distance": float(distances[0][i]),
-        }
-        for i, idx in enumerate(indices[0])
-        if idx != -1
-    ]
+    results = {}
+    for score, i in zip(scores[0], ids[0]):
+        if i == -1:
+            continue
+        chunk = chunks[i]
+        result = results.get(chunk["id"])
+        if result is None:
+            if len(results) == k:
+                continue
+            result = results[chunk["id"]] = {
+                "metadata": articles[chunk["id"]],
+                "score": float(score),
+                "passages": [],
+            }
+        if len(result["passages"]) < passages_per_article:
+            result["passages"].append(chunk["text"])
+
+    return list(results.values())
+
 
 def debug_check_alignment():
-    index = faiss.read_index("files/index.faiss")
-    metadata = get_metadata()
-    assert index.ntotal == len(metadata), "Mismatch between FAISS index and metadata lines!"
-    print("✅ FAISS and metadata are aligned.")
-
-# debug_check_alignment()
+    index = faiss.read_index(INDEX_PATH)
+    assert index.ntotal == len(get_chunks()), "Mismatch between FAISS index and chunks.jsonl!"
+    print("✅ FAISS and chunks are aligned.")

@@ -1,7 +1,8 @@
 from raw_data import get_url_data
 from new_entries import find_new_entries
+from config import DB_FILES
 from database_creator import save_metadata, get_faiss_index, querying_index
-from llm_agent import run_llama3, extract_keywords, run_openai_chat
+from llm_agent import run_llama3, extract_keywords, run_openai_chat, format_sources
 import os
 import argparse
 
@@ -9,13 +10,13 @@ import argparse
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 #set what fieldnames we get from the url & other settings to get raw data
-fieldnames = ('id', 'modified', 'excerpt', 'link', 'content') # check your url with /wp-json/wp/v2/posts to see what fieldnames you want
+fieldnames = ('id', 'modified', 'title', 'link', 'content') # check your url with /wp-json/wp/v2/posts to see what fieldnames you want
 url="https://www2.itanhaem.sp.gov.br/" #accepts any Wordpress website
 articles_per_page = 100 #DO NOT exceed 100 articles per page
 pages = 1
 
 #set fields to be indexed
-field_to_index = "excerpt"
+field_to_index = "content" # full article text, split into chunks
 
 def main():
     parser = argparse.ArgumentParser(description="Run semantic assistant for WordPress sites")
@@ -34,7 +35,7 @@ def main():
 
     if args.refresh:
         print("🧹 Refreshing the local database...")
-        for file in ["files/index.faiss", "files/last_id.txt", "files/news_meta.jsonl"]:
+        for file in DB_FILES:
             if os.path.exists(file):
                 os.remove(file)
                 print(f"✅ Deleted: {file}")
@@ -48,7 +49,7 @@ def main():
     new_entries = find_new_entries(raw_data)
 
     # save metadata jsonl
-    save_metadata(raw_data, new_entries, field_to_index, fieldnames)
+    save_metadata(raw_data, new_entries, fieldnames)
 
     # build or update the index once; new entries must not be re-added on every question
     index = get_faiss_index(new_entries, field_to_index)
@@ -65,7 +66,7 @@ def main():
 
         # query_sentence = extract_keywords(user_input)
 
-        # querying index returns the top 3 articles in the faiss database
+        # top 5 articles, each with the passages that matched the question
         answers = querying_index(user_input, index)
 
         if args.model == "openai":
@@ -74,6 +75,7 @@ def main():
             response = run_llama3(answers, user_input)
 
         print(f"\n🤖 Assistente:\n{response}\n")
+        print(format_sources(answers) + "\n")
 
 if __name__ == '__main__':
     main()

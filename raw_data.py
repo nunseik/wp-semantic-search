@@ -1,9 +1,10 @@
 import requests
 import time
 import os
+from config import META_PATH
 
 def get_url_data(base_url, articles_per_page=10, pages=1):
-    if os.path.exists("files/news_meta.jsonl"):
+    if os.path.exists(META_PATH):
         response = requests.get(base_url+"wp-json/wp/v2/posts", timeout=10)
 
         if response.status_code != requests.codes.ok:

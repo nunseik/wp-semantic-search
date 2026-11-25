@@ -1,14 +1,15 @@
 import os
+from config import LAST_ID_PATH, META_PATH
 from database_creator import get_metadata
 
 def find_new_entries(raw_data):
     last_id = None
 
-    if os.path.exists("files/last_id.txt"):
-        with open('files/last_id.txt', 'r') as txtfile:
+    if os.path.exists(LAST_ID_PATH):
+        with open(LAST_ID_PATH, 'r') as txtfile:
             last_id = int(txtfile.read())
 
-    elif os.path.exists("files/news_meta.jsonl"):
+    elif os.path.exists(META_PATH):
         metadata = get_metadata()
         last_id = metadata[0]['id']
 

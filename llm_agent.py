@@ -1,21 +1,39 @@
 import requests
 from datetime import datetime
-from openai import OpenAI
-from api_key import openai_key
 
-client = OpenAI(api_key=openai_key)
+
+def format_context(answers):
+    """Numbered articles with their matching passages; the numbers are what the answer cites."""
+    blocks = []
+    for n, answer in enumerate(answers, 1):
+        meta = answer["metadata"]
+        header = f"[{n}] {meta.get('title') or '(sem título)'}"
+        if meta.get("modified"):
+            header += f" ({meta['modified'][:10]})"
+        if meta.get("link"):
+            header += f"\nLink: {meta['link']}"
+        passages = "\n[...]\n".join(answer["passages"])
+        blocks.append(f"{header}\nTrechos:\n{passages}")
+    return "\n\n".join(blocks)
+
+
+def format_sources(answers):
+    lines = ["📚 Fontes:"]
+    for n, answer in enumerate(answers, 1):
+        meta = answer["metadata"]
+        lines.append(f"  [{n}] {meta.get('title') or '(sem título)'} — {meta.get('link', '')}")
+    return "\n".join(lines)
+
 
 def run_llama3(answers, pergunta):
     today_date = datetime.today().strftime('%Y-%m-%d')
-    dados = ""
-    for a in range(len(answers)):
-        dados += f"### Artigo {a+1}\n" + f"Proximidade com a busca: {answers[a]['distance']}\n"
-        for data in answers[a]['metadata']:
-            dados += f"{data}: {answers[a]['metadata'][data]}\n"
-        dados += "\n"
     prompt = (
-        dados + f"Hoje é dia {today_date}"
-        f"Com base nos artigos acima, responda à pergunta do usuário:\n{pergunta}\n"
+        f"Artigos:\n\n{format_context(answers)}\n\n"
+        f"Hoje é dia {today_date}.\n"
+        "Responda à pergunta do usuário usando apenas os artigos acima. "
+        "Cite a fonte de cada informação com o número do artigo, por exemplo [1] ou [2][3]. "
+        "Se os artigos não tiverem a resposta, diga que não encontrou essa informação.\n\n"
+        f"Pergunta: {pergunta}\n"
     )
     response = requests.post(
         'http://localhost:11434/api/generate',
@@ -25,7 +43,7 @@ def run_llama3(answers, pergunta):
             "stream": False
         }
     )
-      
+
     response.raise_for_status()
     return response.json()["response"]
 
@@ -45,14 +63,13 @@ def extract_keywords(question):
     return " ".join(keywords)
 
 def run_openai_chat(answers, pergunta):
-    today_date = datetime.today()
+    # imported here so the Ollama backend works without an OpenAI key
+    from openai import OpenAI
+    from api_key import openai_key
 
-    dados = ""
-    for a in range(len(answers)):
-        dados += f"### Artigo {a+1}\n" + f"Proximidade com a busca: {answers[a]['distance']}\n"
-        for data in answers[a]['metadata']:
-            dados += f"{data}: {answers[a]['metadata'][data]}\n"
-        dados += "\n"
+    client = OpenAI(api_key=openai_key)
+    today_date = datetime.today()
+    dados = format_context(answers)
 
     system_message = (
         "Você é um assistente de marketing da prefeitura de Itanhaém. "
