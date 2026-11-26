@@ -12,7 +12,7 @@ This is a lightweight semantic search assistant built for WordPress-based news w
 - Embeds every chunk (with its article title) using Sentence Transformers
 - Stores chunk embeddings in FAISS and ranks articles by their best-matching chunk
 - Answers cite their sources as [n], and the matching article links are listed after each answer
-- Supports two LLM backends: **Ollama** (offline) and **OpenAI GPT-4o**
+- Supports three LLM backends: **Ollama** (offline), **OpenAI GPT-4o-mini**, and **Claude** (with API-verified citations)
 - Incremental updates: adds only new articles to the database
 - Includes CLI flags for switching models and refreshing the index
 
@@ -66,7 +66,8 @@ python main.py
 
 ### Available CLI flags
 
-- `--model openai` → use GPT-4o via OpenAI API
+- `--model claude` → answer with Claude (Opus 5.5) using native citations
+- `--model openai` → write an Instagram caption with GPT-4o-mini via OpenAI API
 - `--model ollama` → use LLaMA 3.2B via Ollama (default)
 - `--refresh` → rebuild your FAISS index and metadata from scratch
 
@@ -77,6 +78,14 @@ Example:
 ```bash
 python main.py --model openai
 ```
+
+---
+
+## 🔑 Claude Configuration
+
+Set `ANTHROPIC_API_KEY` in your environment. Optional: `CLAUDE_MODEL` (default `claude-opus-5-5`) and `CLAUDE_EFFORT` (`low` / `medium` / `high`, default `medium`).
+
+Each retrieved article is sent to Claude as a document with [citations](https://platform.claude.com/docs/en/build-with-claude/citations) enabled. The `[n]` markers in the answer come from the citations the API returns, which point at the exact passages used, so they match the numbered source list printed under the answer. If the model declines a request for safety reasons, the API retries it on a fallback model (`fallbacks: "default"`).
 
 ---
 
@@ -95,8 +104,8 @@ openai_key = "sk-..."
 `eval/` holds a fixed snapshot of 100 articles from the Itanhaém site (June–August 2025) and 45 questions written the way residents would ask them, each with the article(s) that answer it. The eval builds a fresh index from the snapshot and checks whether those articles come back in the top 5:
 
 ```bash
-python eval/run_eval.py                                       # default model
-python eval/run_eval.py --model intfloat/multilingual-e5-base
+python eval/run_eval.py                                       # default model (multilingual-e5-base)
+python eval/run_eval.py --model all-MiniLM-L6-v2              # compare another model
 ```
 
 | model | recall@5 | hit@5 | MRR | index build (100 articles, M-series CPU, model cached) |

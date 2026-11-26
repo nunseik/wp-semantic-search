@@ -2,3 +2,4 @@ requests
 sentence-transformers
 faiss-cpu
 openai
+anthropic

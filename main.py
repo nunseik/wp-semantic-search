@@ -3,6 +3,7 @@ from new_entries import find_new_entries
 from config import DB_FILES
 from database_creator import save_metadata, get_faiss_index, querying_index
 from llm_agent import run_llama3, extract_keywords, run_openai_chat, format_sources
+from claude_agent import run_claude
 import os
 import argparse
 
@@ -22,9 +23,9 @@ def main():
     parser = argparse.ArgumentParser(description="Run semantic assistant for WordPress sites")
     parser.add_argument(
         "--model",
-        choices=["ollama", "openai"],
+        choices=["ollama", "openai", "claude"],
         default="ollama",
-        help="Choose which LLM backend to use: 'ollama' or 'openai' (default: ollama)"
+        help="Choose which LLM backend to use: 'ollama', 'openai' or 'claude' (default: ollama)"
     )
     parser.add_argument(
         "--refresh",
@@ -71,6 +72,8 @@ def main():
 
         if args.model == "openai":
             response = run_openai_chat(answers, user_input)
+        elif args.model == "claude":
+            response = run_claude(answers, user_input)
         else:
             response = run_llama3(answers, user_input)
 
