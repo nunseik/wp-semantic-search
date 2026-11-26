@@ -4,7 +4,7 @@ import os
 import faiss
 
 from chunking import chunk_text
-from config import CHUNKS_PATH, DATA_DIR, INDEX_PATH, LAST_ID_PATH, META_PATH, MODEL_NAME
+from config import CHUNKS_PATH, DATA_DIR, INDEX_MODEL_PATH, INDEX_PATH, LAST_ID_PATH, META_PATH, MODEL_NAME
 from html_stripper import get_stripped_content
 
 # WordPress fields that arrive as HTML and are stored as plain text
@@ -22,13 +22,19 @@ def get_model():
     return _model
 
 
+# E5 models are trained with these prefixes and retrieve worse without them
+_E5 = "e5" in MODEL_NAME.lower()
+PASSAGE_PREFIX = "passage: " if _E5 else ""
+QUERY_PREFIX = "query: " if _E5 else ""
+
+
 def embed_passages(texts):
-    return get_model().encode(texts, normalize_embeddings=True)
+    return get_model().encode([PASSAGE_PREFIX + t for t in texts], normalize_embeddings=True)
 
 
 def embed_query(query):
     # normalized like the passages, so inner product == cosine similarity
-    return get_model().encode([query], normalize_embeddings=True)
+    return get_model().encode([QUERY_PREFIX + query], normalize_embeddings=True)
 
 
 def read_jsonl(path):
@@ -100,6 +106,15 @@ def get_faiss_index(new_entries=None, field_to_index="content"):
                 "files/index.faiss was built by an older version (one vector per article). "
                 "Run with --refresh to rebuild it with chunks."
             )
+        built_with = None
+        if os.path.exists(INDEX_MODEL_PATH):
+            with open(INDEX_MODEL_PATH) as f:
+                built_with = f.read().strip()
+        if built_with != MODEL_NAME:
+            raise SystemExit(
+                f"The index was built with {built_with or 'an unrecorded model'} but the configured model is "
+                f"{MODEL_NAME}. Run with --refresh to rebuild it."
+            )
         index = faiss.read_index(INDEX_PATH)
         n_chunks = len(get_chunks())
         if index.ntotal != n_chunks:
@@ -128,6 +143,8 @@ def get_faiss_index(new_entries=None, field_to_index="content"):
 
     write_jsonl(CHUNKS_PATH, rows)
     faiss.write_index(index, INDEX_PATH)
+    with open(INDEX_MODEL_PATH, "w") as f:
+        f.write(MODEL_NAME)
     print(f"Indexed {len(rows)} chunks from {len(articles)} articles")
     return index
 

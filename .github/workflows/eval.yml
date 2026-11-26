@@ -1,0 +1,50 @@
+name: retrieval-eval
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  eval:
+    name: eval (${{ matrix.model }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # thresholds sit a little under the measured baseline, so they catch regressions
+          - model: all-MiniLM-L6-v2
+            min_recall: "0.65"
+          - model: intfloat/multilingual-e5-base
+            min_recall: "0.93"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies (CPU-only torch)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+
+      - name: Cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ matrix.model }}
+
+      - name: Run retrieval eval
+        env:
+          TOKENIZERS_PARALLELISM: "false"
+        run: |
+          python eval/run_eval.py \
+            --model "${{ matrix.model }}" \
+            --min-recall "${{ matrix.min_recall }}" \
+            --summary "$GITHUB_STEP_SUMMARY" \
+            --quiet

@@ -7,3 +7,5 @@ api_key.py
 *.csv
 *.faiss
 *.jsonl
+# the eval snapshot and question set are tracked
+!eval/*.jsonl

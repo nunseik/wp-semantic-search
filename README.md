@@ -70,7 +70,7 @@ python main.py
 - `--model ollama` → use LLaMA 3.2B via Ollama (default)
 - `--refresh` → rebuild your FAISS index and metadata from scratch
 
-> Upgrading from a version without chunking? Run once with `--refresh`: the old index stored one vector per article and can't be reused.
+> Upgrading from an earlier version? Run once with `--refresh`: the index is now built from chunks with a different embedding model, so the old one can't be reused.
 
 Example:
 
@@ -90,9 +90,27 @@ openai_key = "sk-..."
 
 ---
 
+## 📏 Retrieval eval
+
+`eval/` holds a fixed snapshot of 100 articles from the Itanhaém site (June–August 2025) and 45 questions written the way residents would ask them, each with the article(s) that answer it. The eval builds a fresh index from the snapshot and checks whether those articles come back in the top 5:
+
+```bash
+python eval/run_eval.py                                       # default model
+python eval/run_eval.py --model intfloat/multilingual-e5-base
+```
+
+| model | recall@5 | hit@5 | MRR | index build (100 articles, M-series CPU, model cached) |
+|---|---|---|---|---|
+| all-MiniLM-L6-v2 | 0.700 | 0.733 | 0.610 | 7s |
+| intfloat/multilingual-e5-base (default) | 0.989 | 1.000 | 0.978 | 17s |
+
+The site is in Portuguese and MiniLM is an English model: it finds articles that share words with the question but misses paraphrases ("camelô" vs. "ambulantes", "doar roupas de frio" vs. "Campanha do Agasalho"), which is why the multilingual E5 model is the default. GitHub Actions runs the eval for both models on every push and pull request, and fails if recall@5 drops below the baseline.
+
+---
+
 ## ⚙️ Configuration
 
-`config.py` holds the data folder (`WP_SEARCH_DATA`, default `files`), the embedding model (`WP_SEARCH_MODEL`, default `all-MiniLM-L6-v2`) and the chunk size. Changing the model or chunk size needs a `--refresh`.
+`config.py` holds the data folder (`WP_SEARCH_DATA`, default `files`), the embedding model (`WP_SEARCH_MODEL`, default `intfloat/multilingual-e5-base`) and the chunk size. Changing the model or chunk size needs a `--refresh`.
 
 ---
 
@@ -101,6 +119,7 @@ openai_key = "sk-..."
 - `files/news_meta.jsonl` – one row per article (ID, date, title, link, and plain-text content)
 - `files/chunks.jsonl` – one row per chunk (article ID, chunk number, text); row *i* is vector *i* of the index
 - `files/index.faiss` – FAISS index of normalized chunk embeddings (inner product = cosine similarity)
+- `files/index_model.txt` – the embedding model that built the index (a different configured model asks for `--refresh`)
 - `files/last_id.txt` – stores the last indexed article ID
 
 ---
